@@ -263,7 +263,6 @@ class GoogleCalendarExporter:
             'updated': event.get('updated', ''),
             'organizer': {
                 'email': event.get('organizer', {}).get('email', ''),
-                'display_name': event.get('organizer', {}).get('displayName', ''),
                 'self': event.get('organizer', {}).get('self', False)
             },
             'attendees': attendees,
@@ -288,15 +287,21 @@ class GoogleCalendarExporter:
             True if export successful, False otherwise
         """
         try:
+            # Remove attendees field from events before export
+            cleaned_events = []
+            for event in events:
+                cleaned_event = {k: v for k, v in event.items() if k != 'attendees'}
+                cleaned_events.append(cleaned_event)
+            
             # Fetch color definitions
             color_definitions = self.get_color_definitions()
             
             export_data = {
                 'export_timestamp': datetime.utcnow().isoformat() + 'Z',
-                'total_events': len(events),
+                'total_events': len(cleaned_events),
                 'calendar_info': calendar_info or {},
                 'color_definitions': color_definitions,
-                'events': events
+                'events': cleaned_events
             }
             
             with open(filename, 'w', encoding='utf-8') as f:
@@ -327,21 +332,47 @@ class GoogleCalendarExporter:
             return {}
 
 def is_event_accepted_by_me(event: Dict[str, Any]) -> bool:
-    """Check if the event is accepted or tentatively accepted by the calendar owner."""
+    """Check if the event is accepted or tentatively accepted by the calendar owner.
+    
+    This function uses multiple strategies to determine if you've accepted an event:
+    1. Check if you're in the attendees list with accepted/tentative status
+    2. Check if you're the organizer (implicitly accepted)
+    3. Check if there are no attendees (likely your personal event)
+    """
+    # Strategy 1: Check attendees list for your response
     attendees = event.get('attendees', [])
     
+    # First, look for attendee marked as 'self'
     for attendee in attendees:
-        # Find the attendee entry that represents the calendar owner
         if attendee.get('self', False):
-            response_status = attendee.get('responseStatus', '')
-            # Check if accepted or tentatively accepted
+            response_status = attendee.get('response_status', '')
             return response_status in ['accepted', 'tentative']
     
-    # If no 'self' attendee found, this might be an event you organized
-    # In that case, check if you're the organizer
+    # Strategy 2: Check if you're the organizer (implicitly accepted)
     organizer = event.get('organizer', {})
     if organizer.get('self', False):
-        return True  # You're the organizer, so implicitly accepted
+        return True
+    
+    # Strategy 3: If no attendees, this is likely your personal event
+    if not attendees:
+        return True
+        
+    # Strategy 4: Check if any attendee has accepted status and looks like it could be you
+    # This is a fallback when 'self' field isn't properly set
+    for attendee in attendees:
+        response_status = attendee.get('response_status', '')
+        if response_status in ['accepted', 'tentative']:
+            # If there's only one attendee with accepted status, assume it's you
+            # (This is imperfect but better than missing events)
+            accepted_attendees = [a for a in attendees if a.get('response_status') in ['accepted', 'tentative']]
+            if len(accepted_attendees) == 1:
+                return True
+    
+    # Strategy 5: If you're accessing events from your primary calendar, 
+    # and no attendees are marked, assume these are your events
+    # (This handles cases where the API doesn't populate attendee data properly)
+    if not attendees and event.get('summary', ''):
+        return True
     
     return False
 
