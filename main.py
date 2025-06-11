@@ -261,32 +261,15 @@ class GoogleCalendarExporter:
             'timezone': start.get('timeZone', '') or end.get('timeZone', ''),
             'created': event.get('created', ''),
             'updated': event.get('updated', ''),
-            # 'creator': {
-            #     'email': event.get('creator', {}).get('email', ''),
-            #     'display_name': event.get('creator', {}).get('displayName', '')
-            # },
             'organizer': {
                 'email': event.get('organizer', {}).get('email', ''),
-                'display_name': event.get('organizer', {}).get('displayName', '')
+                'display_name': event.get('organizer', {}).get('displayName', ''),
+                'self': event.get('organizer', {}).get('self', False)
             },
-            #'attendees': attendees,
-            #'attendees_count': len(attendees),
-            'status': event.get('status', ''),
-            #'visibility': event.get('visibility', 'default'),
-            #'transparency': event.get('transparency', 'opaque'),
-            #'recurrence': recurrence_rules,
+            'attendees': attendees,
+            'attendees_count': len(attendees),
             'recurring_event_id': event.get('recurringEventId', ''),
-            # Color information
             'color_id': event.get('colorId', ''),
-            'background_color': event.get('backgroundColor', ''),
-            'foreground_color': event.get('foregroundColor', ''),
-            # 'reminders': {
-            #     'use_default': reminders.get('useDefault', True),
-            #     'overrides': reminder_overrides
-            # },
-            #'html_link': event.get('htmlLink', ''),
-            #'hangout_link': event.get('hangoutLink', ''),
-            #'conference_data': event.get('conferenceData', {}),
             'event_type': event.get('eventType', ''),
         }
     
@@ -305,10 +288,14 @@ class GoogleCalendarExporter:
             True if export successful, False otherwise
         """
         try:
+            # Fetch color definitions
+            color_definitions = self.get_color_definitions()
+            
             export_data = {
                 'export_timestamp': datetime.utcnow().isoformat() + 'Z',
                 'total_events': len(events),
                 'calendar_info': calendar_info or {},
+                'color_definitions': color_definitions,
                 'events': events
             }
             
@@ -321,6 +308,42 @@ class GoogleCalendarExporter:
         except Exception as e:
             print(f"Error exporting to JSON: {e}")
             return False
+
+    def get_color_definitions(self) -> Dict[str, Any]:
+        """Get color definitions for calendars and events.
+        
+        Returns:
+            Dictionary containing color ID to hex color mappings
+        """
+        if self.service is None:
+            print("Error: Calendar service not initialized. Please authenticate first.")
+            return {}
+        
+        try:
+            colors_result = self.service.colors().get().execute()
+            return colors_result
+        except HttpError as error:
+            print(f"An error occurred while fetching colors: {error}")
+            return {}
+
+def is_event_accepted_by_me(event: Dict[str, Any]) -> bool:
+    """Check if the event is accepted or tentatively accepted by the calendar owner."""
+    attendees = event.get('attendees', [])
+    
+    for attendee in attendees:
+        # Find the attendee entry that represents the calendar owner
+        if attendee.get('self', False):
+            response_status = attendee.get('responseStatus', '')
+            # Check if accepted or tentatively accepted
+            return response_status in ['accepted', 'tentative']
+    
+    # If no 'self' attendee found, this might be an event you organized
+    # In that case, check if you're the organizer
+    organizer = event.get('organizer', {})
+    if organizer.get('self', False):
+        return True  # You're the organizer, so implicitly accepted
+    
+    return False
 
 def main() -> None:
     """Main function to run the calendar export tool."""
@@ -345,6 +368,8 @@ def main() -> None:
                        help='OAuth2 Client Secret (alternative to credentials file)')
     parser.add_argument('--use-public-creds', action='store_true',
                        help='Use public OAuth2 credentials for testing (browser auth)')
+    parser.add_argument('--accepted-only', action='store_true',
+                       help='Only export events that you have accepted or tentatively accepted')
     
     args = parser.parse_args()
     
@@ -423,25 +448,33 @@ def main() -> None:
     
     print(f"Found {len(events)} events.")
     
+    # Filter events if requested
+    if args.accepted_only:
+        accepted_events = [event for event in events if is_event_accepted_by_me(event)]
+        print(f"Filtered to {len(accepted_events)} accepted/tentative events.")
+        events_to_export = accepted_events
+    else:
+        events_to_export = events
+    
     # Export to JSON
     print(f"Exporting to {args.output}...")
-    if exporter.export_to_json(events, args.output, calendar_info):
+    if exporter.export_to_json(events_to_export, args.output, calendar_info):
         print("Export completed successfully!")
         
         # Print summary
         print("\nExport Summary:")
-        print(f"- Total events: {len(events)}")
+        print(f"- Total events: {len(events_to_export)}")
         print(f"- Output file: {args.output}")
         print(f"- Time range: {args.days_back} days back to {args.days_forward} days forward")
         
         # Count event types
-        all_day_count = sum(1 for event in events if event['all_day'])
-        timed_count = len(events) - all_day_count
+        all_day_count = sum(1 for event in events_to_export if event['all_day'])
+        timed_count = len(events_to_export) - all_day_count
         print(f"- All-day events: {all_day_count}")
         print(f"- Timed events: {timed_count}")
         
         # Count events with attendees
-        events_with_attendees = sum(1 for event in events if event['attendees'])
+        events_with_attendees = sum(1 for event in events_to_export if event['attendees_count'] > 0)
         print(f"- Events with attendees: {events_with_attendees}")
         
     else:

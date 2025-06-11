@@ -9,11 +9,12 @@ A Python tool to export Google Calendar events with comprehensive metadata using
 - 🎯 Flexible date range filtering
 - 📊 Rich metadata extraction including:
   - Event details (title, description, location, time)
-  - Attendee information and response status
+  - Attendee information with detailed response status and self-identification  
+  - Color information for visual categorization
   - Recurrence rules and patterns
   - Reminders and notifications
   - Conference/meeting links
-  - Creator and organizer information
+  - Creator and organizer information with self-identification
 - 📋 List all available calendars
 - 💾 Export to structured JSON format
 - 🔧 Command-line interface with multiple options
@@ -125,9 +126,10 @@ uv run python main.py --max-results 500
 
 # Use custom credentials file
 uv run python main.py --credentials my_credentials.json
-```
 
-> **Important**: Always use `uv run python` instead of just `python` to ensure the virtual environment and dependencies are properly loaded.
+# Filter to only events you've accepted or tentatively accepted
+uv run python main.py --accepted-only
+```
 
 ### Full Command Reference
 
@@ -139,7 +141,9 @@ uv run python main.py [OPTIONS]
 usage: main.py [-h] [--calendar-id CALENDAR_ID] [--output OUTPUT]
                [--days-back DAYS_BACK] [--days-forward DAYS_FORWARD]
                [--max-results MAX_RESULTS] [--list-calendars]
-               [--credentials CREDENTIALS]
+               [--credentials CREDENTIALS] [--client-id CLIENT_ID]
+               [--client-secret CLIENT_SECRET] [--use-public-creds]
+               [--accepted-only]
 
 Export Google Calendar events with metadata
 
@@ -158,7 +162,46 @@ options:
   --list-calendars      List all available calendars and exit
   --credentials CREDENTIALS
                         Path to Google OAuth2 credentials file (default: credentials.json)
+  --client-id CLIENT_ID
+                        OAuth2 Client ID (alternative to credentials file)
+  --client-secret CLIENT_SECRET
+                        OAuth2 Client Secret (alternative to credentials file)
+  --use-public-creds    Use public OAuth2 credentials for testing (browser auth)
+  --accepted-only       Only export events that you have accepted or tentatively accepted
 ```
+
+> **Important**: Always use `uv run python` instead of just `python` to ensure the virtual environment and dependencies are properly loaded.
+
+## Event Filtering
+
+### Accepted Events Only
+
+You can filter events to only include those you have accepted or tentatively accepted using the `--accepted-only` flag:
+
+```bash
+# Export only events you've accepted
+uv run python main.py --accepted-only
+```
+
+This filter works by checking:
+- **Your response status** in the attendees list (`accepted` or `tentative`)  
+- **Organizer status** - Events you organize are automatically included
+- **Self identification** - Uses the `self` field in attendee/organizer data
+
+### Understanding Response Status
+
+The tool recognizes these response statuses:
+- `accepted` - You have confirmed attendance
+- `tentative` - You have tentatively accepted  
+- `declined` - You have declined (excluded when using `--accepted-only`)
+- `needsAction` - No response yet (excluded when using `--accepted-only`)
+
+### Use Cases for Filtering
+
+- **Time analysis**: See only events that count toward your actual time commitment
+- **Calendar cleanup**: Export confirmed events for migration or backup
+- **Meeting reports**: Focus on events you actually participated in
+- **Personal analytics**: Analyze your confirmed commitments vs total invitations
 
 ## Output Format
 
@@ -184,34 +227,13 @@ The tool exports events to JSON with the following structure:
       "end_time": "2024-01-15T15:00:00-08:00",
       "all_day": false,
       "timezone": "America/Los_Angeles",
-      "attendees": [
-        {
-          "email": "attendee@example.com",
-          "display_name": "John Doe",
-          "response_status": "accepted",
-          "optional": false
-        }
-      ],
-      "creator": {
-        "email": "creator@example.com",
-        "display_name": "Jane Smith"
-      },
       "organizer": {
         "email": "organizer@example.com",
-        "display_name": "Jane Smith"
+        "display_name": "Jane Smith",
+        "self": true
       },
-      "status": "confirmed",
-      "html_link": "https://calendar.google.com/event?eid=...",
-      "recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=MO"],
-      "reminders": {
-        "use_default": false,
-        "overrides": [
-          {
-            "method": "popup",
-            "minutes": 15
-          }
-        ]
-      }
+      "color_id": "11",
+      "event_type": "default",
     }
   ]
 }
@@ -223,12 +245,30 @@ Each exported event includes comprehensive metadata:
 
 - **Basic Info**: ID, title, description, location
 - **Timing**: Start/end times, timezone, all-day flag
-- **People**: Creator, organizer, attendees with response status
+- **People**: Creator, organizer, attendees with detailed response status and self-identification
+- **Colors**: Color ID and categorization for visual organization
 - **Recurrence**: Recurring event rules and patterns
 - **Reminders**: Notification settings and overrides
 - **Links**: Calendar links, hangout/meet links
 - **Status**: Event status, visibility, transparency
 - **Conference**: Video conference details
+
+### Enhanced Attendee Data
+
+Each attendee entry now includes:
+- `email` - Attendee's email address
+- `display_name` - Attendee's display name
+- `response_status` - Response: `accepted`, `tentative`, `declined`, or `needsAction`
+- `optional` - Whether attendance is optional
+- `organizer` - Whether this attendee is the organizer
+- `self` - Whether this attendee represents you (the calendar owner)
+
+### Color Information
+
+Events now include color metadata:
+- `color_id` - Google Calendar color ID (e.g., "11" for red)
+- `event_type` - Event type classification
+- Use the Colors API to map color IDs to actual hex values
 
 ## Troubleshooting
 
