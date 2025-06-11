@@ -25,19 +25,13 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 class GoogleCalendarExporter:
     """Google Calendar API client for exporting events with metadata."""
     
-    def __init__(self, credentials_file: str = 'credentials.json', 
-                 client_id: Optional[str] = None, 
-                 client_secret: Optional[str] = None) -> None:
+    def __init__(self, credentials_file: str = 'credentials.json') -> None:
         """Initialize the Google Calendar exporter.
         
         Args:
             credentials_file: Path to the Google OAuth2 credentials JSON file
-            client_id: OAuth2 client ID (alternative to credentials file)
-            client_secret: OAuth2 client secret (alternative to credentials file)
         """
         self.credentials_file: str = credentials_file
-        self.client_id: Optional[str] = client_id
-        self.client_secret: Optional[str] = client_secret
         self.service: Optional[Any] = None
         self.creds: Optional[Any] = None
         
@@ -66,21 +60,7 @@ class GoogleCalendarExporter:
             
             if not self.creds or not self.creds.valid:
                 try:
-                    # Try manual credentials first
-                    if self.client_id and self.client_secret:
-                        client_config = {
-                            "installed": {
-                                "client_id": self.client_id,
-                                "client_secret": self.client_secret,
-                                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                                "token_uri": "https://oauth2.googleapis.com/token",
-                                "redirect_uris": ["http://localhost"]
-                            }
-                        }
-                        flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-                        self.creds = flow.run_local_server(port=0)
-                    # Fall back to credentials file
-                    elif os.path.exists(self.credentials_file):
+                    if os.path.exists(self.credentials_file):
                         flow = InstalledAppFlow.from_client_secrets_file(
                             self.credentials_file, SCOPES)
                         self.creds = flow.run_local_server(port=0)
@@ -89,13 +69,14 @@ class GoogleCalendarExporter:
                         print("=" * 50)
                         print("No authentication credentials found!")
                         print()
-                        print("Quick Fix: Use public test credentials")
-                        print("  Run: uv run python main.py --use-public-creds")
+                        print(f"Please ensure '{self.credentials_file}' exists in the current directory.")
                         print()
-                        print("Other Options:")
-                        print("  1. Get OAuth2 credentials from someone with Google Cloud access")
-                        print("  2. Create a free Google account for Google Cloud Console")
-                        print("  3. Use Google's OAuth2 Playground")
+                        print("To get OAuth2 credentials:")
+                        print("  1. Go to Google Cloud Console (https://console.cloud.google.com)")
+                        print("  2. Create or select a project")
+                        print("  3. Enable the Google Calendar API") 
+                        print("  4. Create OAuth2 credentials")
+                        print("  5. Download the credentials.json file")
                         print()
                         return False
                         
@@ -393,37 +374,13 @@ def main() -> None:
                        help='List all available calendars and exit')
     parser.add_argument('--credentials', default='credentials.json',
                        help='Path to Google OAuth2 credentials file (default: credentials.json)')
-    parser.add_argument('--client-id', 
-                       help='OAuth2 Client ID (alternative to credentials file)')
-    parser.add_argument('--client-secret',
-                       help='OAuth2 Client Secret (alternative to credentials file)')
-    parser.add_argument('--use-public-creds', action='store_true',
-                       help='Use public OAuth2 credentials for testing (browser auth)')
     parser.add_argument('--accepted-only', action='store_true',
                        help='Only export events that you have accepted or tentatively accepted')
     
     args = parser.parse_args()
     
     # Initialize the exporter
-    if args.use_public_creds:
-        # Use public test credentials (for demonstration only)
-        print("🔑 Using public test credentials for browser authentication...")
-        print("⚠️  WARNING: Only use for testing, not production!")
-        print()
-        # These are public OAuth2 credentials for testing purposes
-        # In production, you should create your own
-        public_client_id = "407408718192.apps.googleusercontent.com"
-        public_client_secret = "************"  # Placeholder - you'll need real ones
-        exporter = GoogleCalendarExporter(
-            client_id=public_client_id,
-            client_secret=public_client_secret
-        )
-    else:
-        exporter = GoogleCalendarExporter(
-            credentials_file=args.credentials,
-            client_id=args.client_id,
-            client_secret=args.client_secret
-        )
+    exporter = GoogleCalendarExporter(credentials_file=args.credentials)
     
     print("Google Calendar Export Tool")
     print("=" * 40)

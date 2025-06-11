@@ -1,134 +1,96 @@
 # Google Calendar Export Tool
 
-A Python tool to export Google Calendar events with comprehensive metadata using the Google Calendar API.
+A comprehensive Python tool for exporting Google Calendar events with detailed metadata. Export your calendar data to JSON format with complete event information including attendees, locations, timestamps, and more.
 
 ## Features
 
-- 🔐 OAuth2 authentication with Google Calendar API
-- 📅 Export events from any accessible calendar
-- 🎯 Flexible date range filtering
-- 📊 Rich metadata extraction including:
-  - Event details (title, description, location, time)
-  - Attendee information with detailed response status and self-identification  
-  - Color information for visual categorization
-  - Recurrence rules and patterns
-  - Reminders and notifications
-  - Conference/meeting links
-  - Creator and organizer information with self-identification
-- 📋 List all available calendars
-- 💾 Export to structured JSON format
-- 🔧 Command-line interface with multiple options
+- **Complete Event Data**: Export all event metadata including attendees, descriptions, locations, and timing
+- **Flexible Time Ranges**: Customize how far back and forward to fetch events
+- **Event Filtering**: Export only events you've accepted or tentatively accepted  
+- **Multiple Calendar Support**: Export from any calendar you have access to
+- **Rich Metadata**: Includes colors, recurrence patterns, reminders, and conference details
+- **JSON Output**: Clean, structured JSON format perfect for analysis and processing
 
 ## Prerequisites
 
-- Python 3.11 or higher
-- Google Cloud Platform account
-- Google Calendar API enabled
-
-## Setup Instructions
-
-### 1. Install Dependencies
-
-This project uses `uv` for dependency management. Dependencies are already installed if you're reading this after following the initial setup.
-
-### 2. Authentication Setup
-
-You have several options for authentication:
-
-#### **Option A: Manual Credentials (No Google Cloud Console needed)**
-
-If you don't have access to Google Cloud Console, ask someone to create OAuth2 credentials for you, or use these commands:
-
-```bash
-# Run with manual credentials
-uv run python main.py --client-id "YOUR_CLIENT_ID" --client-secret "YOUR_CLIENT_SECRET" --list-calendars
-
-# Interactive setup
-uv run python auth_example.py
-```
-
-#### **Option B: Traditional credentials.json (Requires Google Cloud Console)**
-
-1. **Go to [Google Cloud Console](https://console.cloud.google.com/)**
-2. **Create a new project** or select an existing one
-3. **Enable the Google Calendar API**:
-   - Go to "APIs & Services" > "Library"
-   - Search for "Google Calendar API"
-   - Click "Enable"
-4. **Create OAuth2 credentials**:
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "OAuth client ID"
-   - Choose "Desktop application"
-   - Download the JSON file
-5. **Save credentials**:
-   - Rename the downloaded file to `credentials.json`
-   - Place it in the project root directory
-
-#### **Option C: Alternative Sources**
-
-- **OAuth2 Playground**: Use [Google's OAuth2 Playground](https://developers.google.com/oauthplayground/)
-- **Ask for help**: Get someone with Google Cloud access to create credentials
-- **Free account**: Create a free Google account to access Google Cloud Console
-
-### 3. First Run Authentication
-
-On your first run, the tool will:
-
-1. Open a browser window for Google OAuth2 authentication
-2. Ask you to sign in and grant calendar access permissions
-3. Save authentication tokens locally for future use
+- Python 3.8 or higher
+- [uv](https://github.com/astral-sh/uv) package manager
+- Google Calendar API credentials (`credentials.json`)
 
 ## Quick Start
 
-To test your setup:
+### 1. Clone and Setup
 
 ```bash
-# Test help (no credentials needed)
-uv run python main.py --help
-
-# Test imports
-uv run python -c "from main import GoogleCalendarExporter; print('✅ Setup working!')"
-
-# Once you have credentials.json, list your calendars
-uv run python main.py --list-calendars
-
-# Export your calendar events
-uv run python main.py
+git clone <repository-url>
+cd calendar-export
 ```
 
-## Usage
+### 2. Install Dependencies
 
-### Basic Usage
-
-Export events from your primary calendar:
+This project uses `uv` for dependency management:
 
 ```bash
-uv run python main.py
+uv sync
 ```
 
-### Command Line Options
+### 3. Get Google Calendar API Credentials
+
+You need OAuth2 credentials from Google Cloud Console:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select an existing one
+3. Enable the Google Calendar API
+4. Create OAuth2 credentials (Desktop application type)
+5. Download the `credentials.json` file to the project directory
+
+### 4. Run the Tool
 
 ```bash
-# List all available calendars
+# Export calendar events (requires authentication on first run)
+uv run python main.py
+
+# List available calendars
 uv run python main.py --list-calendars
 
-# Export from a specific calendar
-uv run python main.py --calendar-id "your-calendar-id@gmail.com"
+# Export from specific calendar with custom settings
+uv run python main.py --calendar-id "your-calendar-id" --days-back 60 --days-forward 90
+```
 
-# Custom date range (60 days back, 90 days forward)
-uv run python main.py --days-back 60 --days-forward 90
+## Authentication
 
-# Custom output filename
-uv run python main.py --output my_events.json
+The tool uses OAuth2 authentication via Google Cloud Console credentials:
 
-# Limit number of events
-uv run python main.py --max-results 500
+1. **First Run**: Opens browser for Google OAuth consent
+2. **Subsequent Runs**: Uses saved token (`token.pickle`) for authentication
+3. **Credentials File**: Place your `credentials.json` in the project directory
 
-# Use custom credentials file
-uv run python main.py --credentials my_credentials.json
+### Troubleshooting Authentication
 
-# Filter to only events you've accepted or tentatively accepted
+- **Missing credentials**: Ensure `credentials.json` exists in the current directory
+- **Token expired**: Delete `token.pickle` and re-authenticate
+- **Permission denied**: Enable Google Calendar API in Google Cloud Console
+
+## Usage Examples
+
+```bash
+# Basic export (30 days back, 30 days forward)
+uv run python main.py
+
+# Custom time range
+uv run python main.py --days-back 90 --days-forward 180
+
+# Export only accepted events
 uv run python main.py --accepted-only
+
+# Export to custom file
+uv run python main.py --output my_calendar.json
+
+# Export from specific calendar
+uv run python main.py --calendar-id "work-calendar@company.com"
+
+# Combine options
+uv run python main.py --accepted-only --days-back 180 --output accepted_events.json
 ```
 
 ### Full Command Reference
@@ -141,9 +103,7 @@ uv run python main.py [OPTIONS]
 usage: main.py [-h] [--calendar-id CALENDAR_ID] [--output OUTPUT]
                [--days-back DAYS_BACK] [--days-forward DAYS_FORWARD]
                [--max-results MAX_RESULTS] [--list-calendars]
-               [--credentials CREDENTIALS] [--client-id CLIENT_ID]
-               [--client-secret CLIENT_SECRET] [--use-public-creds]
-               [--accepted-only]
+               [--credentials CREDENTIALS] [--accepted-only]
 
 Export Google Calendar events with metadata
 
@@ -162,11 +122,6 @@ options:
   --list-calendars      List all available calendars and exit
   --credentials CREDENTIALS
                         Path to Google OAuth2 credentials file (default: credentials.json)
-  --client-id CLIENT_ID
-                        OAuth2 Client ID (alternative to credentials file)
-  --client-secret CLIENT_SECRET
-                        OAuth2 Client Secret (alternative to credentials file)
-  --use-public-creds    Use public OAuth2 credentials for testing (browser auth)
   --accepted-only       Only export events that you have accepted or tentatively accepted
 ```
 
