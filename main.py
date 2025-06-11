@@ -238,17 +238,17 @@ class GoogleCalendarExporter:
             })
         
         # Process recurrence rules
-        recurrence_rules = event.get('recurrence', [])
+        # recurrence_rules = event.get('recurrence', [])
         
         # Process reminders
-        reminders = event.get('reminders', {})
-        reminder_overrides = []
-        if reminders.get('overrides'):
-            for override in reminders['overrides']:
-                reminder_overrides.append({
-                    'method': override.get('method', 'popup'),
-                    'minutes': override.get('minutes', 10)
-                })
+        # reminders = event.get('reminders', {})
+        # reminder_overrides = []
+        # if reminders.get('overrides'):
+        #     for override in reminders['overrides']:
+        #         reminder_overrides.append({
+        #             'method': override.get('method', 'popup'),
+        #             'minutes': override.get('minutes', 10)
+        #         })
         
         return {
             'id': event.get('id', ''),
@@ -261,29 +261,33 @@ class GoogleCalendarExporter:
             'timezone': start.get('timeZone', '') or end.get('timeZone', ''),
             'created': event.get('created', ''),
             'updated': event.get('updated', ''),
-            'creator': {
-                'email': event.get('creator', {}).get('email', ''),
-                'display_name': event.get('creator', {}).get('displayName', '')
-            },
+            # 'creator': {
+            #     'email': event.get('creator', {}).get('email', ''),
+            #     'display_name': event.get('creator', {}).get('displayName', '')
+            # },
             'organizer': {
                 'email': event.get('organizer', {}).get('email', ''),
                 'display_name': event.get('organizer', {}).get('displayName', '')
             },
-            'attendees': attendees,
-            'attendees_count': len(attendees),
-            'status': event.get('status', 'confirmed'),
-            'visibility': event.get('visibility', 'default'),
-            'transparency': event.get('transparency', 'opaque'),
-            'recurrence': recurrence_rules,
+            #'attendees': attendees,
+            #'attendees_count': len(attendees),
+            'status': event.get('status', ''),
+            #'visibility': event.get('visibility', 'default'),
+            #'transparency': event.get('transparency', 'opaque'),
+            #'recurrence': recurrence_rules,
             'recurring_event_id': event.get('recurringEventId', ''),
-            'reminders': {
-                'use_default': reminders.get('useDefault', True),
-                'overrides': reminder_overrides
-            },
-            'html_link': event.get('htmlLink', ''),
-            'hangout_link': event.get('hangoutLink', ''),
-            'conference_data': event.get('conferenceData', {}),
-            'event_type': event.get('eventType', 'default'),
+            # Color information
+            'color_id': event.get('colorId', ''),
+            'background_color': event.get('backgroundColor', ''),
+            'foreground_color': event.get('foregroundColor', ''),
+            # 'reminders': {
+            #     'use_default': reminders.get('useDefault', True),
+            #     'overrides': reminder_overrides
+            # },
+            #'html_link': event.get('htmlLink', ''),
+            #'hangout_link': event.get('hangoutLink', ''),
+            #'conference_data': event.get('conferenceData', {}),
+            'event_type': event.get('eventType', ''),
         }
     
     def export_to_json(self, 
