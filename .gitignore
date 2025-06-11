@@ -67,6 +67,7 @@ htmlcov/
 # Jupyter Notebook
 .ipynb_checkpoints
 *.ipynb
+calendar_explorer.ipynb
 
 # pyenv
 .python-version
