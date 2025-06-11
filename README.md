@@ -139,6 +139,7 @@ uv run python main.py --accepted-only
 ```
 
 This filter works by checking:
+
 - **Your response status** in the attendees list (`accepted` or `tentative`)  
 - **Organizer status** - Events you organize are automatically included
 - **Self identification** - Uses the `self` field in attendee/organizer data
@@ -146,6 +147,7 @@ This filter works by checking:
 ### Understanding Response Status
 
 The tool recognizes these response statuses:
+
 - `accepted` - You have confirmed attendance
 - `tentative` - You have tentatively accepted  
 - `declined` - You have declined (excluded when using `--accepted-only`)
@@ -211,6 +213,7 @@ Each exported event includes comprehensive metadata:
 ### Enhanced Attendee Data
 
 Each attendee entry now includes:
+
 - `email` - Attendee's email address
 - `display_name` - Attendee's display name
 - `response_status` - Response: `accepted`, `tentative`, `declined`, or `needsAction`
@@ -221,6 +224,7 @@ Each attendee entry now includes:
 ### Color Information
 
 Events now include color metadata:
+
 - `color_id` - Google Calendar color ID (e.g., "11" for red)
 - `event_type` - Event type classification
 - Use the Colors API to map color IDs to actual hex values
