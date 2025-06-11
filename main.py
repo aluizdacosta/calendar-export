@@ -312,50 +312,56 @@ class GoogleCalendarExporter:
             print(f"An error occurred while fetching colors: {error}")
             return {}
 
-def is_event_accepted_by_me(event: Dict[str, Any]) -> bool:
-    """Check if the event is accepted or tentatively accepted by the calendar owner.
-    
-    This function uses multiple strategies to determine if you've accepted an event:
-    1. Check if you're in the attendees list with accepted/tentative status
-    2. Check if you're the organizer (implicitly accepted)
-    3. Check if there are no attendees (likely your personal event)
-    """
-    # Strategy 1: Check attendees list for your response
-    attendees = event.get('attendees', [])
-    
-    # First, look for attendee marked as 'self'
-    for attendee in attendees:
-        if attendee.get('self', False):
-            response_status = attendee.get('response_status', '')
-            return response_status in ['accepted', 'tentative']
-    
-    # Strategy 2: Check if you're the organizer (implicitly accepted)
-    organizer = event.get('organizer', {})
-    if organizer.get('self', False):
-        return True
-    
-    # Strategy 3: If no attendees, this is likely your personal event
-    if not attendees:
-        return True
+    def is_event_accepted_by_me(self, event: Dict[str, Any]) -> bool:
+        """Check if the event is accepted or tentatively accepted by the calendar owner.
         
-    # Strategy 4: Check if any attendee has accepted status and looks like it could be you
-    # This is a fallback when 'self' field isn't properly set
-    for attendee in attendees:
-        response_status = attendee.get('response_status', '')
-        if response_status in ['accepted', 'tentative']:
-            # If there's only one attendee with accepted status, assume it's you
-            # (This is imperfect but better than missing events)
-            accepted_attendees = [a for a in attendees if a.get('response_status') in ['accepted', 'tentative']]
-            if len(accepted_attendees) == 1:
-                return True
-    
-    # Strategy 5: If you're accessing events from your primary calendar, 
-    # and no attendees are marked, assume these are your events
-    # (This handles cases where the API doesn't populate attendee data properly)
-    if not attendees and event.get('summary', ''):
-        return True
-    
-    return False
+        This function uses multiple strategies to determine if you've accepted an event:
+        1. Check if you're in the attendees list with accepted/tentative status
+        2. Check if you're the organizer (implicitly accepted)
+        3. Check if there are no attendees (likely your personal event)
+        
+        Args:
+            event: Event dictionary from the calendar export
+            
+        Returns:
+            True if the event is accepted or tentatively accepted, False otherwise
+        """
+        # Strategy 1: Check attendees list for your response
+        attendees = event.get('attendees', [])
+        
+        # First, look for attendee marked as 'self'
+        for attendee in attendees:
+            if attendee.get('self', False):
+                response_status = attendee.get('response_status', '')
+                return response_status in ['accepted', 'tentative']
+        
+        # Strategy 2: Check if you're the organizer (implicitly accepted)
+        organizer = event.get('organizer', {})
+        if organizer.get('self', False):
+            return True
+        
+        # Strategy 3: If no attendees, this is likely your personal event
+        if not attendees:
+            return True
+            
+        # Strategy 4: Check if any attendee has accepted status and looks like it could be you
+        # This is a fallback when 'self' field isn't properly set
+        for attendee in attendees:
+            response_status = attendee.get('response_status', '')
+            if response_status in ['accepted', 'tentative']:
+                # If there's only one attendee with accepted status, assume it's you
+                # (This is imperfect but better than missing events)
+                accepted_attendees = [a for a in attendees if a.get('response_status') in ['accepted', 'tentative']]
+                if len(accepted_attendees) == 1:
+                    return True
+        
+        # Strategy 5: If you're accessing events from your primary calendar, 
+        # and no attendees are marked, assume these are your events
+        # (This handles cases where the API doesn't populate attendee data properly)
+        if not attendees and event.get('summary', ''):
+            return True
+        
+        return False
 
 def main() -> None:
     """Main function to run the calendar export tool."""
@@ -438,7 +444,7 @@ def main() -> None:
     
     # Filter events if requested
     if args.accepted_only:
-        accepted_events = [event for event in events if is_event_accepted_by_me(event)]
+        accepted_events = [event for event in events if exporter.is_event_accepted_by_me(event)]
         print(f"Filtered to {len(accepted_events)} accepted/tentative events.")
         events_to_export = accepted_events
     else:
